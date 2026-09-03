@@ -770,7 +770,42 @@ document.addEventListener('DOMContentLoaded',()=>{
       }
     });
 
-  setInterval(simulationTick,60);
+  let previousDistance = 0;
+
+// Poll the live Flask API every 1000ms
+setInterval(async () => {
+    try {
+        const response = await fetch('http://127.0.0.1:5000/api/telemetry'); //
+        const data = await response.json();
+
+        if (data.status === "success") {
+            // 1. Calculate Live Velocity
+            const distDelta = data.distance_mm - previousDistance;
+            STATE.velocity = distDelta; //
+            
+            // 2. Track Peak Velocity (Flick)
+            if (STATE.velocity > STATE.peakVelocity) {
+                STATE.peakVelocity = STATE.velocity; //[cite: 8]
+            }
+            
+            // 3. Update Master Distance State
+            STATE.totalMm = data.distance_mm; //[cite: 8]
+            STATE.sessionMm = data.distance_mm; //[cite: 8]
+            previousDistance = data.distance_mm;
+            
+            // 4. Update Scroll Wheel State
+            STATE.scrollTotal = data.scroll_mm; //[cite: 8]
+            
+            // 5. Trigger UI Repaints
+            updateOdometer(); //[cite: 8]
+            setGaugeValue(STATE.velocity); //[cite: 8]
+            updateFlick(); //[cite: 8]
+            updateScroll(); //[cite: 8]
+        }
+    } catch (error) {
+        console.error("Telemetry API offline:", error);
+    }
+}, 1000);
   setInterval(()=>{const {GRID_COLS:C,GRID_ROWS:R,heatmap}=STATE;for(let r=0;r<R;r++)for(let c=0;c<C;c++)heatmap[r][c]*=0.998;},2000);
   setInterval(()=>{if(Math.random()<0.3)STATE.cpm=clamp(STATE.cpm+Math.round(rnd(-3,5)),0,120);},500);
 });
