@@ -1,1 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mouse Odometer — Telemetry Dashboard v2.4.1</title>
+  <meta name="description" content="Over-engineered telemetry dashboard tracking mouse movement distance, velocity, scroll, and activity heatmap in real-time." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
+  <style>
+    :root {
+      --bg-base:          #09090b;
+      --bg-surface:       #0f1117;
+      --bg-card:          #111318;
+      --bg-elevated:      #18191f;
+      --border:           rgba(255,255,255,0.06);
+      --border-accent:    rgba(0,229,255,0.25);
+      --text-primary:     #f4f4f5;
+      --text-secondary:   #a1a1aa;
+      --text-muted:       #52525b;
+      --text-mono:        'JetBrains Mono', monospace;
+      --text-sans:        'Space Grotesk', 'Inter', sans-serif;
+      --cyan:             #00e5ff;
+      --cyan-dim:         #00b4cc;
+      --cyan-glow:        rgba(0,229,255,0.15);
+      --cyan-glow-strong: rgba(0,229,255,0.35);
+      --purple:           #a855f7;
+      --purple-dim:       #7c3aed;
+      --purple-glow:      rgba(168,85,247,0.18);
+      --purple-glow-strong:rgba(168,85,247,0.40);
+      --amber:            #f59e0b;
+      --green:            #22d3ee;
+      --red:              #f87171;
+      --radius-card:      14px;
+      --radius-sm:        8px;
+      --glass-bg:         rgba(15,17,23,0.72);
+      --glass-border:     rgba(255,255,255,0.07);
+      --glass-blur:       18px;
+      --transition-fast:  150ms ease;
+      --transition-med:   300ms cubic-bezier(0.4,0,0.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--text-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    body {
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,229,255,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 50% at 80% 100%, rgba(168,85,247,0.06) 0%, transparent 60%),
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.018) 39px, rgba(255,255,255,0.018) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.018) 39px, rgba(255,255,255,0.018) 40px);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+
+    .app-wrapper { max-width: 1440px; margin: 0 auto; padding: 24px 28px 48px; }
+
+    /* TOP BAR */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 0 18px var(--cyan-glow-strong);
+    }
+    .brand-text h1 { font-family: var(--text-sans); font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+    .brand-text span { font-family: var(--text-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; }
+    .topbar-meta { display: flex; align-items: center; gap: 18px; }
+    .status-pill {
+      display: flex; align-items: center; gap: 7px; padding: 5px 12px;
+      border-radius: 100px; background: rgba(34,211,238,0.08); border: 1px solid rgba(34,211,238,0.2);
+      font-family: var(--text-mono); font-size: 11px; color: var(--green);
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 8px var(--green); animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+    .session-info { font-family: var(--text-mono); font-size: 11px; color: var(--text-muted); }
+    .session-info span { color: var(--text-secondary); }
+
+    /* GRID */
+    .dashboard-grid {
+      display: grid; grid-template-columns: repeat(12, 1fr);
+      grid-template-rows: auto auto auto; gap: 16px;
+    }
+
+    /* GLASS CONTAINER */
+    .glass-container {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-card);
+      padding: 22px 24px;
+      position: relative; overflow: hidden;
+      transition: border-color var(--transition-med), box-shadow var(--transition-med);
+    }
+    .glass-container:hover { border-color: rgba(0,229,255,0.18); box-shadow: 0 0 32px rgba(0,229,255,0.06); }
+    .glass-container::before {
+      content:''; position:absolute; inset:0; border-radius:inherit;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.04) 0%, transparent 30%);
+      pointer-events:none;
+    }
+
+    .card-label {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--text-mono); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
+    }
+    .card-label-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .card-label-dot.cyan   { background: var(--cyan);   box-shadow: 0 0 6px var(--cyan); }
+    .card-label-dot.purple { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+    .card-label-dot.amber  { background: var(--amber);  box-shadow: 0 0 6px var(--amber); }
+    .card-label-dot.green  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+
+    .corner-accent { position: absolute; pointer-events: none; }
+    .corner-accent.top-right {
+      top:0; right:0; width:60px; height:60px;
+      border-top: 1px solid var(--border-accent); border-right: 1px solid var(--border-accent);
+      border-radius: 0 var(--radius-card) 0 0;
+    }
+    .corner-accent.bot-left {
+      bottom:0; left:0; width:40px; height:40px;
+      border-bottom: 1px solid var(--border-accent); border-left: 1px solid var(--border-accent);
+      border-radius: 0 0 0 var(--radius-card); opacity:.5;
+    }
+
+    .scan-line {
+      position:absolute; left:0; right:0; height:1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity:0; pointer-events:none; animation: scan 4s linear infinite;
+    }
+    @keyframes scan { 0%{top:0%;opacity:0} 5%{opacity:.4} 95%{opacity:.4} 100%{top:100%;opacity:0} }
+
+    /* 1. MASTER ODOMETER */
+    .module-odometer { grid-column: 1/9; grid-row: 1; }
+    .odo-display { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+    .odo-number {
+      font-family: var(--text-mono); font-size: clamp(52px,7vw,84px); font-weight:800;
+      line-height:1; letter-spacing:-0.04em;
+      background: linear-gradient(135deg,#ffffff 10%,var(--cyan) 60%,var(--purple) 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      filter: drop-shadow(0 0 20px rgba(0,229,255,0.4));
+    }
+    .odo-unit { font-family:var(--text-mono); font-size:18px; font-weight:500; color:var(--text-muted); letter-spacing:.08em; padding-bottom:4px; }
+    .odo-sub { display:flex; align-items:center; gap:24px; margin-top:8px; flex-wrap:wrap; }
+    .odo-sub-item { display:flex; flex-direction:column; gap:2px; }
+    .odo-sub-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--text-muted); }
+    .odo-sub-value { font-family:var(--text-mono); font-size:20px; font-weight:700; color:var(--cyan); letter-spacing:-0.02em; }
+    .odo-progress-row { display:flex; align-items:center; gap:12px; margin-top:14px; }
+    .odo-progress-bar { flex:1; height:3px; background:var(--bg-elevated); border-radius:3px; overflow:hidden; }
+    .odo-progress-fill { height:100%; background:linear-gradient(90deg,var(--cyan),var(--purple)); border-radius:3px; box-shadow:0 0 8px var(--cyan-glow-strong); transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .odo-progress-label { font-family:var(--text-mono); font-size:10px; color:var(--text-muted); white-space:nowrap; }
+
+    /* 2. VELOCITY GAUGE */
+    .module-velocity { grid-column:9/13; grid-row:1; display:flex; flex-direction:column; }
+    .gauge-wrapper { flex:1; display:flex; align-items:center; justify-content:center; padding:8px 0; position:relative; }
+    .gauge-svg { width:100%; max-width:220px; aspect-ratio:1; overflow:visible; }
+    .gauge-center-label { position:absolute; top:50%; left:50%; transform:translate(-50%,-42%); text-align:center; pointer-events:none; }
+    .gauge-value { display:block; font-family:var(--text-mono); font-size:30px; font-weight:800; color:var(--cyan); letter-spacing:-0.04em; line-height:1; text-shadow:0 0 16px var(--cyan); }
+    .gauge-unit-label { display:block; font-family:var(--text-mono); font-size:10px; letter-spacing:.12em; color:var(--text-muted); margin-top:3px; }
+    .gauge-zone-label { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); font-family:var(--text-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; padding:3px 10px; border-radius:100px; border:1px solid currentColor; }
+    .gauge-zone-label.idle   { color:var(--text-muted); border-color:var(--text-muted); }
+    .gauge-zone-label.slow   { color:var(--green);      border-color:var(--green); }
+    .gauge-zone-label.normal { color:var(--cyan);       border-color:var(--cyan); }
+    .gauge-zone-label.fast   { color:var(--amber);      border-color:var(--amber); }
+    .gauge-zone-label.flick  { color:var(--red);        border-color:var(--red); }
+
+    /* 3. FASTEST FLICK */
+    .module-flick { grid-column:1/5; grid-row:2; }
+    .flick-badge { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+    .flick-trophy { font-size:32px; filter:drop-shadow(0 0 12px var(--amber)); animation:trophy-pulse 3s ease-in-out infinite; }
+    @keyframes trophy-pulse { 0%,100%{filter:drop-shadow(0 0 8px var(--amber))} 50%{filter:drop-shadow(0 0 20px var(--amber))} }
+    .flick-score-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--text-muted); }
+    .flick-score { font-family:var(--text-mono); font-size:36px; font-weight:800; color:var(--amber); letter-spacing:-0.04em; line-height:1.1; text-shadow:0 0 20px rgba(245,158,11,.5); }
+    .flick-score-unit { font-size:13px; font-weight:400; color:var(--text-muted); }
+    .sparkline-header { display:flex; justify-content:space-between; margin-bottom:6px; }
+    .sparkline-title { font-family:var(--text-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); }
+    .sparkline-svg { width:100%; height:60px; overflow:visible; }
+    .flick-stats-row { display:flex; gap:12px; margin-top:14px; }
+    .flick-stat-chip { flex:1; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px 10px; }
+    .flick-stat-chip-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); }
+    .flick-stat-chip-value { font-family:var(--text-mono); font-size:15px; font-weight:700; color:var(--text-primary); margin-top:2px; }
+
+    /* 4. SCROLL WHEEL */
+    .module-scroll { grid-column:5/9; grid-row:2; }
+    .scroll-layout { display:flex; gap:20px; align-items:stretch; }
+    .scroll-bar-track { width:36px; flex-shrink:0; background:var(--bg-elevated); border:1px solid var(--border); border-radius:18px; position:relative; overflow:hidden; min-height:160px; }
+    .scroll-bar-fill { position:absolute; bottom:0; left:0; right:0; background:linear-gradient(0deg,var(--purple),var(--cyan)); border-radius:18px; transition:height .6s cubic-bezier(0.4,0,0.2,1); box-shadow:0 0 16px var(--purple-glow); }
+    .scroll-bar-tick { position:absolute; left:0; right:0; height:1px; background:rgba(255,255,255,0.05); }
+    .scroll-bar-pct { position:absolute; bottom:-1px; left:50%; transform:translateX(-50%); font-family:var(--text-mono); font-size:9px; color:var(--text-primary); background:var(--purple); padding:1px 5px; border-radius:4px; white-space:nowrap; }
+    .scroll-info { flex:1; display:flex; flex-direction:column; gap:14px; }
+    .scroll-metric { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; }
+    .scroll-metric-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--text-muted); }
+    .scroll-metric-value { font-family:var(--text-mono); font-size:22px; font-weight:700; letter-spacing:-0.03em; color:var(--purple); text-shadow:0 0 12px var(--purple-glow-strong); margin-top:2px; }
+    .tread-wear-row { display:flex; align-items:center; gap:8px; margin-top:4px; }
+    .tread-bar { flex:1; height:4px; background:var(--bg-base); border-radius:4px; overflow:hidden; }
+    .tread-fill { height:100%; border-radius:4px; transition:width 1s ease,background .5s ease; }
+    .tread-pct-label { font-family:var(--text-mono); font-size:10px; font-weight:700; }
+    .dir-bar-track { flex:1; width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:4px; position:relative; min-height:60px; overflow:hidden; }
+    .dir-bar-fill { position:absolute; bottom:0; left:0; right:0; border-radius:4px; transition:height .5s ease; }
+    .dir-bar-fill.down { background:linear-gradient(0deg,var(--cyan),rgba(0,229,255,.2)); }
+    .dir-bar-fill.up   { background:linear-gradient(0deg,var(--purple),rgba(168,85,247,.2)); }
+
+    /* 5. HEATMAP */
+    .module-heatmap { grid-column:9/13; grid-row:2/4; }
+    .heatmap-viewport { position:relative; width:100%; aspect-ratio:.85; background:rgba(0,0,0,.4); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; }
+    .heatmap-grid { display:grid; width:100%; height:100%; }
+    .heatmap-cell { border-radius:1px; transition:background .8s ease,box-shadow .8s ease; }
+    .heatmap-crosshair {
+      position:absolute; pointer-events:none; width:12px; height:12px;
+      border:1px solid var(--cyan); border-radius:50%; transform:translate(-50%,-50%);
+      transition:left .1s linear,top .1s linear; box-shadow:0 0 8px var(--cyan);
+    }
+    .heatmap-crosshair::before,.heatmap-crosshair::after { content:''; position:absolute; background:var(--cyan); }
+    .heatmap-crosshair::before { width:1px; height:6px; left:50%; top:50%; transform:translate(-50%,-50%); }
+    .heatmap-crosshair::after  { width:6px; height:1px; left:50%; top:50%; transform:translate(-50%,-50%); }
+    .heatmap-legend { display:flex; align-items:center; justify-content:space-between; margin-top:10px; }
+    .legend-gradient { flex:1; height:4px; border-radius:4px; background:linear-gradient(90deg,transparent 0%,rgba(168,85,247,.4) 25%,rgba(0,229,255,.6) 60%,rgba(255,255,255,.9) 100%); }
+    .legend-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.1em; color:var(--text-muted); }
+    .legend-label:first-child { margin-right:8px; }
+    .legend-label:last-child  { margin-left:8px; }
+
+    /* MINI STRIP */
+    .module-mini-strip { grid-column:1/9; grid-row:3; display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    .mini-card { display:flex; flex-direction:column; justify-content:space-between; gap:8px; }
+    .mini-card-top { display:flex; align-items:center; justify-content:space-between; }
+    .mini-val { font-family:var(--text-mono); font-size:26px; font-weight:700; letter-spacing:-0.03em; }
+    .mini-val.cyan   { color:var(--cyan);   text-shadow:0 0 12px var(--cyan-glow-strong); }
+    .mini-val.purple { color:var(--purple); text-shadow:0 0 12px var(--purple-glow-strong); }
+    .mini-val.amber  { color:var(--amber); }
+    .mini-val.green  { color:var(--green); }
+    .mini-icon { font-size:20px; opacity:.5; }
+    .mini-bar-track { height:2px; background:var(--bg-elevated); border-radius:2px; overflow:hidden; }
+    .mini-bar-fill { height:100%; border-radius:2px; transition:width .6s ease; }
+    .mini-bar-fill.cyan   { background:var(--cyan); }
+    .mini-bar-fill.purple { background:var(--purple); }
+    .mini-bar-fill.amber  { background:var(--amber); }
+    .mini-bar-fill.green  { background:var(--green); }
+    .mini-label-row { display:flex; justify-content:space-between; align-items:baseline; }
+    .mini-label { font-family:var(--text-mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-muted); }
+    .mini-sublabel { font-family:var(--text-mono); font-size:10px; color:var(--text-secondary); }
+
+    .neon-cyan   { color:var(--cyan);   text-shadow:0 0 8px var(--cyan); }
+    .neon-purple { color:var(--purple); text-shadow:0 0 8px var(--purple); }
+
+    @media (max-width:1100px) {
+      .dashboard-grid { grid-template-columns:repeat(6,1fr); }
+      .module-odometer  { grid-column:1/7; grid-row:1; }
+      .module-velocity  { grid-column:1/4; grid-row:2; }
+      .module-flick     { grid-column:4/7; grid-row:2; }
+      .module-scroll    { grid-column:1/4; grid-row:3; }
+      .module-heatmap   { grid-column:4/7; grid-row:3/5; }
+      .module-mini-strip{ grid-column:1/4; grid-row:4; grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:700px) {
+      .dashboard-grid { grid-template-columns:1fr; }
+      .module-odometer,.module-velocity,.module-flick,.module-scroll,.module-heatmap,.module-mini-strip { grid-column:1; grid-row:auto; }
+      .module-mini-strip { grid-template-columns:repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">🖱️</div>
+      <div class="brand-text">
+        <h1>Mouse Odometer</h1>
+        <span>Telemetry Dashboard v2.4.1 — Session Active</span>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <div class="status-pill"><span class="status-dot"></span>LIVE</div>
+      <div class="session-info">Session: <span id="session-timer">00:00:00</span></div>
+      <div class="session-info">Samples: <span id="sample-count">0</span></div>
+    </div>
+  </header>
+
+  <main class="dashboard-grid">
+
+    <!-- 1. MASTER ODOMETER -->
+    <section class="glass-container module-odometer" id="mod-odometer" aria-label="Master Odometer">
+      <div class="corner-accent top-right"></div>
+      <div class="corner-accent bot-left"></div>
+      <div class="scan-line"></div>
+      <div class="card-label"><span class="card-label-dot cyan"></span>MASTER ODOMETER — TOTAL PHYSICAL DISTANCE</div>
+      <div class="odo-display">
+        <span class="odo-number" id="odo-mm">0,000,000</span>
+        <span class="odo-unit">mm</span>
+      </div>
+      <div class="odo-sub">
+        <div class="odo-sub-item"><span class="odo-sub-label">Metres</span><span class="odo-sub-value" id="odo-m">0.00</span></div>
+        <div class="odo-sub-item"><span class="odo-sub-label">Kilometres</span><span class="odo-sub-value" id="odo-km">0.00000</span></div>
+        <div class="odo-sub-item"><span class="odo-sub-label">Session Δ mm</span><span class="odo-sub-value" id="odo-delta">+0</span></div>
+        <div class="odo-sub-item"><span class="odo-sub-label">Avg mm/s</span><span class="odo-sub-value" id="odo-avg">0.0</span></div>
+      </div>
+      <div class="odo-progress-row">
+        <div class="odo-progress-bar"><div class="odo-progress-fill" id="odo-progress" style="width:0%"></div></div>
+        <span class="odo-progress-label" id="odo-progress-label">0% to 1km milestone</span>
+      </div>
+    </section>
+
+    <!-- 2. VELOCITY GAUGE -->
+    <section class="glass-container module-velocity" id="mod-velocity" aria-label="Velocity Gauge">
+      <div class="card-label"><span class="card-label-dot cyan"></span>VELOCITY GAUGE — REAL-TIME</div>
+      <div class="gauge-wrapper">
+        <svg class="gauge-svg" id="gauge-svg" viewBox="0 0 220 220" aria-hidden="true">
+          <defs>
+            <linearGradient id="gauge-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stop-color="#22d3ee"/>
+              <stop offset="50%"  stop-color="#00e5ff"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+            <filter id="gauge-glow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <circle cx="110" cy="110" r="90" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="14" stroke-linecap="round" stroke-dasharray="452 566" stroke-dashoffset="-57" transform="rotate(0 110 110)"/>
+          <circle cx="110" cy="110" r="74" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+          <circle cx="110" cy="110" r="58" fill="none" stroke="rgba(255,255,255,0.02)" stroke-width="1"/>
+          <g id="gauge-ticks" stroke="rgba(255,255,255,0.15)" stroke-width="1"></g>
+          <circle cx="110" cy="110" r="90" id="gauge-arc" fill="none" stroke="url(#gauge-grad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 566" stroke-dashoffset="-57" transform="rotate(-90 110 110)" filter="url(#gauge-glow)" style="transition:stroke-dasharray .25s cubic-bezier(0.4,0,0.2,1)"/>
+          <line id="gauge-needle" x1="110" y1="110" x2="110" y2="30" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" transform="rotate(-135 110 110)" filter="url(#gauge-glow)" style="transition:transform .25s cubic-bezier(0.4,0,0.2,1)"/>
+          <circle cx="110" cy="110" r="6" fill="var(--bg-card)" stroke="var(--cyan)" stroke-width="2"/>
+          <circle cx="110" cy="110" r="2" fill="var(--cyan)"/>
+          <text x="28"  y="180" font-family="JetBrains Mono" font-size="10" fill="rgba(255,255,255,0.3)" text-anchor="middle">0</text>
+          <text x="110" y="22"  font-family="JetBrains Mono" font-size="10" fill="rgba(255,255,255,0.3)" text-anchor="middle">500</text>
+          <text x="192" y="180" font-family="JetBrains Mono" font-size="10" fill="rgba(255,255,255,0.3)" text-anchor="middle">1k</text>
+        </svg>
+        <div class="gauge-center-label">
+          <span class="gauge-value" id="gauge-val">0</span>
+          <span class="gauge-unit-label">mm / s</span>
+        </div>
+        <span class="gauge-zone-label idle" id="gauge-zone">IDLE</span>
+      </div>
+    </section>
+
+    <!-- 3. FASTEST FLICK -->
+    <section class="glass-container module-flick" id="mod-flick" aria-label="Fastest Flick">
+      <div class="corner-accent top-right"></div>
+      <div class="card-label"><span class="card-label-dot amber"></span>FASTEST FLICK — HIGH SCORE</div>
+      <div class="flick-badge">
+        <span class="flick-trophy">🏆</span>
+        <div>
+          <div class="flick-score-label">PEAK VELOCITY RECORD</div>
+          <div class="flick-score"><span id="flick-peak">0</span><span class="flick-score-unit"> mm/s</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="sparkline-header">
+          <span class="sparkline-title">velocity history — last 40 samples</span>
+          <span class="sparkline-title neon-cyan" id="sparkline-avg">avg: 0</span>
+        </div>
+        <svg class="sparkline-svg" id="sparkline-svg" viewBox="0 0 300 60" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="spark-fill-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stop-color="rgba(245,158,11,0.25)"/>
+              <stop offset="100%" stop-color="rgba(245,158,11,0)"/>
+            </linearGradient>
+          </defs>
+          <path id="spark-area" fill="url(#spark-fill-grad)" d="M0,60 L300,60 Z"/>
+          <path id="spark-line" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-linejoin="round" d="M0,60 L300,60"/>
+          <line id="spark-peak-line" x1="0" y1="0" x2="300" y2="0" stroke="rgba(248,113,113,0.4)" stroke-width="1" stroke-dasharray="4 4"/>
+        </svg>
+      </div>
+      <div class="flick-stats-row">
+        <div class="flick-stat-chip"><div class="flick-stat-chip-label">Total Flicks</div><div class="flick-stat-chip-value" id="flick-count">0</div></div>
+        <div class="flick-stat-chip"><div class="flick-stat-chip-label">Last Flick</div><div class="flick-stat-chip-value" id="flick-last">—</div></div>
+        <div class="flick-stat-chip"><div class="flick-stat-chip-label">Flick Score</div><div class="flick-stat-chip-value neon-cyan" id="flick-elo">1200</div></div>
+      </div>
+    </section>
+
+    <!-- 4. SCROLL WHEEL TELEMETRY -->
+    <section class="glass-container module-scroll" id="mod-scroll" aria-label="Scroll Wheel Telemetry">
+      <div class="card-label"><span class="card-label-dot purple"></span>SCROLL WHEEL TELEMETRY</div>
+      <div class="scroll-layout">
+        <div class="scroll-bar-track">
+          <div class="scroll-bar-tick" style="bottom:25%"></div>
+          <div class="scroll-bar-tick" style="bottom:50%"></div>
+          <div class="scroll-bar-tick" style="bottom:75%"></div>
+          <div class="scroll-bar-fill" id="scroll-bar-fill" style="height:0%">
+            <span class="scroll-bar-pct" id="scroll-bar-pct">0%</span>
+          </div>
+        </div>
+        <div class="scroll-info">
+          <div class="scroll-metric">
+            <div class="scroll-metric-label">Total Rotational Distance</div>
+            <div class="scroll-metric-value"><span id="scroll-rot-val">0</span> <small style="font-size:12px;color:var(--text-muted)">notches</small></div>
+          </div>
+          <div class="scroll-metric">
+            <div class="scroll-metric-label">Tread Wear</div>
+            <div class="tread-wear-row">
+              <div class="tread-bar"><div class="tread-fill" id="tread-fill" style="width:0%"></div></div>
+              <span class="tread-pct-label" id="tread-pct-label">0%</span>
+            </div>
+          </div>
+          <div class="scroll-metric">
+            <div class="scroll-metric-label">Scroll Rate</div>
+            <div class="scroll-metric-value" style="font-size:16px;color:var(--cyan)"><span id="scroll-rate">0.0</span> <small style="font-size:11px;color:var(--text-muted)">notch/s</small></div>
+          </div>
+          <div style="display:flex;gap:8px;flex:1;">
+            <div style="flex:1;">
+              <div class="scroll-metric-label" style="margin-bottom:6px;">↓ DOWN</div>
+              <div class="dir-bar-track" style="min-height:50px;"><div class="dir-bar-fill down" id="scroll-down-fill" style="height:0%"></div></div>
+              <div style="font-family:var(--text-mono);font-size:11px;color:var(--cyan);margin-top:3px;" id="scroll-down-val">0</div>
+            </div>
+            <div style="flex:1;">
+              <div class="scroll-metric-label" style="margin-bottom:6px;">↑ UP</div>
+              <div class="dir-bar-track" style="min-height:50px;"><div class="dir-bar-fill up" id="scroll-up-fill" style="height:0%"></div></div>
+              <div style="font-family:var(--text-mono);font-size:11px;color:var(--purple);margin-top:3px;" id="scroll-up-val">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ACTIVITY HEATMAP -->
+    <section class="glass-container module-heatmap" id="mod-heatmap" aria-label="Activity Heatmap">
+      <div class="card-label"><span class="card-label-dot green"></span>ACTIVITY HEATMAP — CURSOR DWELL ZONES</div>
+      <div class="heatmap-viewport" id="heatmap-viewport">
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+        <div class="heatmap-crosshair" id="heatmap-crosshair" style="left:50%;top:50%"></div>
+      </div>
+      <div class="heatmap-legend" style="margin-top:10px;">
+        <span class="legend-label">COLD</span>
+        <div class="legend-gradient"></div>
+        <span class="legend-label">HOT</span>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:10px;">
+        <div style="flex:1;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;">
+          <div class="scroll-metric-label">Active Zone</div>
+          <div style="font-family:var(--text-mono);font-size:13px;color:var(--green);margin-top:2px;" id="hm-zone">—</div>
+        </div>
+        <div style="flex:1;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;">
+          <div class="scroll-metric-label">Dwell Events</div>
+          <div style="font-family:var(--text-mono);font-size:13px;color:var(--green);margin-top:2px;" id="hm-events">0</div>
+        </div>
+        <div style="flex:1;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;">
+          <div class="scroll-metric-label">Hottest Cell</div>
+          <div style="font-family:var(--text-mono);font-size:13px;color:var(--cyan);margin-top:2px;" id="hm-hot">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MINI STATS STRIP -->
+    <div class="module-mini-strip">
+      <div class="glass-container mini-card" id="mini-cpm">
+        <div class="card-label"><span class="card-label-dot cyan"></span>CLICKS / MIN</div>
+        <div class="mini-card-top"><span class="mini-val cyan" id="mini-cpm-val">0</span><span class="mini-icon">🖱️</span></div>
+        <div class="mini-bar-track"><div class="mini-bar-fill cyan" id="mini-cpm-bar" style="width:0%"></div></div>
+        <div class="mini-label-row"><span class="mini-label">avg 30-day</span><span class="mini-sublabel" id="mini-cpm-avg">0 cpm</span></div>
+      </div>
+      <div class="glass-container mini-card" id="mini-jitter">
+        <div class="card-label"><span class="card-label-dot purple"></span>JITTER INDEX</div>
+        <div class="mini-card-top"><span class="mini-val purple" id="mini-jitter-val">0.00</span><span class="mini-icon">〰️</span></div>
+        <div class="mini-bar-track"><div class="mini-bar-fill purple" id="mini-jitter-bar" style="width:0%"></div></div>
+        <div class="mini-label-row"><span class="mini-label">px std dev</span><span class="mini-sublabel" id="mini-jitter-grade">STABLE</span></div>
+      </div>
+      <div class="glass-container mini-card" id="mini-entropy">
+        <div class="card-label"><span class="card-label-dot amber"></span>DIR ENTROPY</div>
+        <div class="mini-card-top"><span class="mini-val amber" id="mini-entropy-val">0.00</span><span class="mini-icon">🌀</span></div>
+        <div class="mini-bar-track"><div class="mini-bar-fill amber" id="mini-entropy-bar" style="width:0%"></div></div>
+        <div class="mini-label-row"><span class="mini-label">bits / move</span><span class="mini-sublabel" id="mini-entropy-class">ERRATIC</span></div>
+      </div>
+      <div class="glass-container mini-card" id="mini-precision">
+        <div class="card-label"><span class="card-label-dot green"></span>PRECISION</div>
+        <div class="mini-card-top"><span class="mini-val green" id="mini-prec-val">0</span><span class="mini-icon">🎯</span></div>
+        <div class="mini-bar-track"><div class="mini-bar-fill green" id="mini-prec-bar" style="width:0%"></div></div>
+        <div class="mini-label-row"><span class="mini-label">session score</span><span class="mini-sublabel" id="mini-prec-grade">ROOKIE</span></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+'use strict';
+
+const STATE = {
+  totalMm: 14827.3, sessionMm: 0, avgVelocity: 0, velocityAccum: 0, velSamples: 0,
+  velocity: 0, targetVelocity: 0,
+  peakVelocity: 0, flickCount: 0, lastFlickMs: null, elo_val: 1200,
+  velocityHistory: Array(40).fill(0),
+  scrollTotal: 0, scrollDown: 0, scrollUp: 0, scrollRate: 0, scrollTarget: 0,
+  GRID_COLS: 20, GRID_ROWS: 16, heatmap: null,
+  crossX: 50, crossY: 50, targetCX: 50, targetCY: 50, dwellEvents: 0,
+  cpm: 0, cpmAvg: 40, jitter: 0.0, entropy: 0.0, precision: 0,
+  sessionStart: Date.now(), sampleCount: 0,
+};
+
+function fmt(n, dec=0) { return Number(n).toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}); }
+function clamp(v,lo,hi) { return Math.min(hi,Math.max(lo,v)); }
+function lerp(a,b,t)    { return a+(b-a)*t; }
+function rnd(lo,hi)     { return lo+Math.random()*(hi-lo); }
+function el(id)         { return document.getElementById(id); }
+
+// Session timer
+function updateSessionTimer() {
+  const e = Math.floor((Date.now()-STATE.sessionStart)/1000);
+  const h=String(Math.floor(e/3600)).padStart(2,'0');
+  const m=String(Math.floor((e%3600)/60)).padStart(2,'0');
+  const s=String(e%60).padStart(2,'0');
+  el('session-timer').textContent=`${h}:${m}:${s}`;
+}
+
+// 1. Odometer
+function updateOdometer() {
+  const mm=STATE.totalMm, m=mm/1000, km=mm/1e6;
+  el('odo-mm').textContent=fmt(Math.round(mm));
+  el('odo-m').textContent=fmt(m,2);
+  el('odo-km').textContent=km.toFixed(5);
+  el('odo-delta').textContent='+'+fmt(Math.round(STATE.sessionMm));
+  el('odo-avg').textContent=STATE.avgVelocity.toFixed(1);
+  const pct=clamp(mm/1e6*100,0,100);
+  el('odo-progress').style.width=pct.toFixed(2)+'%';
+  el('odo-progress-label').textContent=pct.toFixed(2)+'% to 1 km milestone';
+}
+
+// 2. Gauge
+const GAUGE_CIRC = 2*Math.PI*90;
+function setGaugeValue(vel) {
+  const ratio=clamp(vel/1000,0,1);
+  const arcLen=ratio*GAUGE_CIRC*0.80;
+  el('gauge-arc').setAttribute('stroke-dasharray',`${arcLen} ${GAUGE_CIRC}`);
+  const angle=-135+ratio*270;
+  el('gauge-needle').setAttribute('transform',`rotate(${angle} 110 110)`);
+  el('gauge-val').textContent=Math.round(vel);
+  const zoneEl=el('gauge-zone');
+  let zone,cls;
+  if(vel<10){zone='IDLE';cls='idle';}
+  else if(vel<80){zone='SLOW';cls='slow';}
+  else if(vel<250){zone='NORMAL';cls='normal';}
+  else if(vel<600){zone='FAST';cls='fast';}
+  else{zone='FLICK';cls='flick';}
+  if(zoneEl.textContent!==zone){zoneEl.textContent=zone;zoneEl.className='gauge-zone-label '+cls;}
+}
+
+// 3. Flick + sparkline
+function updateFlick() {
+  el('flick-peak').textContent=fmt(Math.round(STATE.peakVelocity));
+  el('flick-count').textContent=fmt(STATE.flickCount);
+  el('flick-elo').textContent=fmt(STATE.elo_val);
+  if(STATE.lastFlickMs){
+    const ago=Math.round((Date.now()-STATE.lastFlickMs)/1000);
+    el('flick-last').textContent=ago<60?`${ago}s ago`:`${Math.round(ago/60)}m ago`;
+  }
+  drawSparkline();
+}
+
+function drawSparkline() {
+  const data=STATE.velocityHistory, W=300, H=60;
+  const maxV=Math.max(...data,STATE.peakVelocity,1);
+  const pts=data.map((v,i)=>[(i/(data.length-1))*W, H-(v/maxV)*(H-4)]);
+  const linePath=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const areaPath=`M0,${H} ${pts.map(p=>`L${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')} L${W},${H} Z`;
+  el('spark-line').setAttribute('d',linePath);
+  el('spark-area').setAttribute('d',areaPath);
+  const peakY=H-(STATE.peakVelocity/maxV)*(H-4);
+  el('spark-peak-line').setAttribute('y1',peakY.toFixed(1));
+  el('spark-peak-line').setAttribute('y2',peakY.toFixed(1));
+  const avg=data.reduce((a,b)=>a+b,0)/data.length;
+  el('sparkline-avg').textContent=`avg: ${avg.toFixed(0)} mm/s`;
+}
+
+// 4. Scroll
+function updateScroll() {
+  const total=STATE.scrollTotal, maxS=10000, wearPct=clamp(total/maxS*100,0,100);
+  el('scroll-rot-val').textContent=fmt(total);
+  el('tread-pct-label').textContent=wearPct.toFixed(1)+'%';
+  const fill=el('tread-fill');
+  fill.style.width=wearPct+'%';
+  fill.style.background=wearPct<40?'#22d3ee':wearPct<70?'#f59e0b':'#f87171';
+  el('scroll-rate').textContent=STATE.scrollRate.toFixed(1);
+  const barPct=clamp((total/Math.max(maxS*0.5,total+1))*100,0,100);
+  el('scroll-bar-fill').style.height=barPct.toFixed(1)+'%';
+  el('scroll-bar-pct').textContent=barPct.toFixed(0)+'%';
+  const dTotal=STATE.scrollDown+STATE.scrollUp||1;
+  el('scroll-down-fill').style.height=(STATE.scrollDown/dTotal*100).toFixed(1)+'%';
+  el('scroll-up-fill').style.height=(STATE.scrollUp/dTotal*100).toFixed(1)+'%';
+  el('scroll-down-val').textContent=fmt(STATE.scrollDown);
+  el('scroll-up-val').textContent=fmt(STATE.scrollUp);
+}
+
+// 5. Heatmap
+function initHeatmap() {
+  const {GRID_COLS:C,GRID_ROWS:R}=STATE;
+  STATE.heatmap=Array.from({length:R},()=>new Float32Array(C));
+  const grid=el('heatmap-grid');
+  grid.style.gridTemplateColumns=`repeat(${C},1fr)`;
+  grid.style.gridTemplateRows=`repeat(${R},1fr)`;
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++){
+    const cell=document.createElement('div');
+    cell.className='heatmap-cell';cell.id=`hm-${r}-${c}`;
+    grid.appendChild(cell);
+  }
+}
+
+function heatToColor(v) {
+  if(v<=0)return'transparent';
+  const t=clamp(v,0,1);
+  if(t<0.33){const p=t/0.33;return`rgba(168,85,247,${(p*0.6).toFixed(2)})`;}
+  else if(t<0.66){
+    const p=(t-0.33)/0.33;
+    return`rgba(${Math.round(lerp(168,0,p))},${Math.round(lerp(85,229,p))},${Math.round(lerp(247,255,p))},0.7)`;
+  }else{
+    const p=(t-0.66)/0.34;
+    return`rgba(${Math.round(lerp(0,255,p))},${Math.round(lerp(229,255,p))},255,${(0.7+p*0.3).toFixed(2)})`;
+  }
+}
+
+function updateHeatmapCells() {
+  const {GRID_COLS:C,GRID_ROWS:R,heatmap}=STATE;
+  let maxVal=0;
+  for(let r=0;r<R;r++)for(let c=0;c<C;c++)if(heatmap[r][c]>maxVal)maxVal=heatmap[r][c];
+  let hottestCell=0;
+  for(let r=0;r<R;r++){
+    for(let c=0;c<C;c++){
+      const norm=maxVal>0?heatmap[r][c]/maxVal:0;
+      const cell=el(`hm-${r}-${c}`);
+      if(cell){
+        cell.style.background=heatToColor(norm);
+        cell.style.boxShadow=norm>0.85?`0 0 6px rgba(0,229,255,${(norm*0.6).toFixed(2)})`:'';
+      }
+      if(heatmap[r][c]>hottestCell)hottestCell=heatmap[r][c];
+    }
+  }
+  el('heatmap-crosshair').style.left=STATE.crossX.toFixed(1)+'%';
+  el('heatmap-crosshair').style.top=STATE.crossY.toFixed(1)+'%';
+  const col=Math.floor(STATE.crossX/100*C),row=Math.floor(STATE.crossY/100*R);
+  const zones=['TOP-LEFT','TOP-CENTER','TOP-RIGHT','MID-LEFT','CENTER','MID-RIGHT','BOT-LEFT','BOT-CENTER','BOT-RIGHT'];
+  const zr=row<R*0.33?0:row<R*0.66?1:2,zc=col<C*0.33?0:col<C*0.66?1:2;
+  el('hm-zone').textContent=zones[zr*3+zc];
+  el('hm-events').textContent=fmt(STATE.dwellEvents);
+  el('hm-hot').textContent=fmt(Math.round(hottestCell));
+}
+
+// Mini stats
+const PREC_GRADES=['ROOKIE','AMATEUR','AVERAGE','SKILLED','PRO','ELITE','GOD-TIER'];
+const JIT_GRADES=['GLASS','STABLE','DRIFTING','SHAKY','JITTER'];
+const ENT_CLASSES=['LINEAR','DIRECTED','SMOOTH','NORMAL','ERRATIC','CHAOTIC'];
+
+function updateMiniStats() {
+  el('mini-cpm-val').textContent=fmt(Math.round(STATE.cpm));
+  el('mini-cpm-bar').style.width=clamp(STATE.cpm/120*100,0,100)+'%';
+  el('mini-cpm-avg').textContent=STATE.cpmAvg+' cpm';
+  el('mini-jitter-val').textContent=STATE.jitter.toFixed(2);
+  el('mini-jitter-bar').style.width=clamp(STATE.jitter/10*100,0,100)+'%';
+  el('mini-jitter-grade').textContent=JIT_GRADES[Math.min(Math.floor(STATE.jitter/2),JIT_GRADES.length-1)];
+  el('mini-entropy-val').textContent=STATE.entropy.toFixed(2);
+  el('mini-entropy-bar').style.width=clamp(STATE.entropy/3*100,0,100)+'%';
+  el('mini-entropy-class').textContent=ENT_CLASSES[Math.min(Math.floor(STATE.entropy/0.5),ENT_CLASSES.length-1)];
+  el('mini-prec-val').textContent=fmt(Math.round(STATE.precision));
+  el('mini-prec-bar').style.width=clamp(STATE.precision/1000*100,0,100)+'%';
+  el('mini-prec-grade').textContent=PREC_GRADES[Math.min(Math.floor(STATE.precision/143),PREC_GRADES.length-1)];
+}
+
+// Main tick
+let tickPhase=0,burstTimer=0,inBurst=false;
+function simulationTick() {
+  tickPhase++;STATE.sampleCount++;
+  el('sample-count').textContent=fmt(STATE.sampleCount);
+
+  // Velocity
+  if(!inBurst&&Math.random()<0.012){inBurst=true;burstTimer=Math.floor(rnd(3,10));STATE.targetVelocity=rnd(400,950);}
+  if(inBurst){burstTimer--;if(burstTimer<=0){inBurst=false;STATE.targetVelocity=rnd(0,60);}}
+  else{if(Math.random()<0.08)STATE.targetVelocity=rnd(10,200);if(Math.random()<0.05)STATE.targetVelocity=rnd(0,30);}
+  STATE.velocity=lerp(STATE.velocity,STATE.targetVelocity,0.18);
+  STATE.velocity=clamp(STATE.velocity+rnd(-8,8),0,999);
+  if(STATE.velocity>STATE.peakVelocity)STATE.peakVelocity=STATE.velocity;
+  if(STATE.velocity>350&&(STATE.lastFlickMs===null||Date.now()-STATE.lastFlickMs>1500)){
+    STATE.flickCount++;STATE.lastFlickMs=Date.now();
+    STATE.elo_val=Math.min(3000,STATE.elo_val+Math.floor((STATE.velocity-350)/30));
+  }
+  STATE.velocityHistory.push(STATE.velocity);
+  if(STATE.velocityHistory.length>40)STATE.velocityHistory.shift();
+
+  // Odometer
+  const deltaMm=STATE.velocity*0.06;
+  STATE.totalMm+=deltaMm;STATE.sessionMm+=deltaMm;
+  STATE.velocityAccum+=STATE.velocity;STATE.velSamples++;
+  STATE.avgVelocity=STATE.velocityAccum/STATE.velSamples;
+
+  // Scroll
+  if(Math.random()<0.08){
+    const n=Math.floor(rnd(1,5)),dn=Math.random()>0.35;
+    STATE.scrollTotal+=n;dn?STATE.scrollDown+=n:STATE.scrollUp+=n;
+    STATE.scrollTarget=rnd(2,15);
+  }
+  STATE.scrollRate=lerp(STATE.scrollRate,STATE.scrollTarget*(Math.random()<0.15?0:1),0.1);
+  STATE.scrollTarget*=0.95;
+
+  // Heatmap cursor
+  if(Math.random()<0.04){STATE.targetCX=rnd(5,95);STATE.targetCY=rnd(5,95);}
+  STATE.crossX=lerp(STATE.crossX,STATE.targetCX,0.06);
+  STATE.crossY=lerp(STATE.crossY,STATE.targetCY,0.06);
+  if(STATE.velocity<30){
+    const {GRID_COLS:C,GRID_ROWS:R,heatmap}=STATE;
+    const col=clamp(Math.floor(STATE.crossX/100*C),0,C-1);
+    const row=clamp(Math.floor(STATE.crossY/100*R),0,R-1);
+    heatmap[row][col]+=rnd(0.5,2.5);
+    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dr,dc])=>{const nr=row+dr,nc=col+dc;if(nr>=0&&nr<R&&nc>=0&&nc<C)heatmap[nr][nc]+=rnd(0.1,0.5);});
+    STATE.dwellEvents++;
+  }
+
+  // Mini
+  if(Math.random()<0.05)STATE.cpm=clamp(STATE.cpm+rnd(-6,8),0,120);
+  STATE.cpmAvg=Math.round(lerp(STATE.cpmAvg,STATE.cpm*0.9,0.02));
+  STATE.jitter=clamp(STATE.jitter+rnd(-0.12,0.15)*(inBurst?3:1),0,10);
+  STATE.entropy=clamp(STATE.entropy+rnd(-0.03,0.04),0,3);
+  STATE.precision=clamp(STATE.precision+rnd(-1.5,2.5),0,1000);
+
+  updateOdometer();
+  setGaugeValue(STATE.velocity);
+  updateFlick();
+  updateScroll();
+  updateHeatmapCells();
+  updateMiniStats();
+  updateSessionTimer();
+}
+
+// Gauge ticks
+function buildGaugeTicks() {
+  const ticks=el('gauge-ticks'),cx=110,cy=110,r=90,totalAngle=270,majorStep=10;
+  for(let i=0;i<=majorStep;i++){
+    const angle=(-135+(i/majorStep)*totalAngle)*Math.PI/180;
+    const isMajor=i%5===0,rIn=isMajor?r-14:r-8;
+    const x1=cx+Math.cos(angle)*r,y1=cy+Math.sin(angle)*r;
+    const x2=cx+Math.cos(angle)*rIn,y2=cy+Math.sin(angle)*rIn;
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1.toFixed(2));line.setAttribute('y1',y1.toFixed(2));
+    line.setAttribute('x2',x2.toFixed(2));line.setAttribute('y2',y2.toFixed(2));
+    line.setAttribute('stroke',isMajor?'rgba(255,255,255,0.3)':'rgba(255,255,255,0.12)');
+    line.setAttribute('stroke-width',isMajor?'1.5':'1');
+    ticks.appendChild(line);
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  buildGaugeTicks();
+  initHeatmap();
+
+  // Seed heatmap with realistic Gaussian blobs
+  const {GRID_COLS:C,GRID_ROWS:R,heatmap}=STATE;
+  [{r:R*.15,c:C*.5,v:80},{r:R*.5,c:C*.5,v:120},{r:R*.8,c:C*.75,v:60},{r:R*.3,c:C*.2,v:45}]
+    .forEach(({r,c,v})=>{
+      for(let dr=-4;dr<=4;dr++)for(let dc=-4;dc<=4;dc++){
+        const nr=Math.round(r+dr),nc=Math.round(c+dc);
+        if(nr>=0&&nr<R&&nc>=0&&nc<C)heatmap[nr][nc]+=v*Math.exp(-Math.sqrt(dr*dr+dc*dc)*0.7);
+      }
+    });
+
+  setInterval(simulationTick,60);
+  setInterval(()=>{const {GRID_COLS:C,GRID_ROWS:R,heatmap}=STATE;for(let r=0;r<R;r++)for(let c=0;c<C;c++)heatmap[r][c]*=0.998;},2000);
+  setInterval(()=>{if(Math.random()<0.3)STATE.cpm=clamp(STATE.cpm+Math.round(rnd(-3,5)),0,120);},500);
+});
+</script>
+</body>
+</html>
