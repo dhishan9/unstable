@@ -3,11 +3,11 @@
 # Mouse Odometer 🎯
 
 ## Basic Details
-### Team Name: [Unstable]
+### Team Name: Unstable
 
 ### Team Members
-- Member 1: [Dhishan Manoj] - [College of engineering vadakara]
-- Member 2: [Neeraj P] - [College of engineering vadakara]
+- Member 1: Dhishan Manoj - College of engineering vadakara
+- Member 2: Neeraj P - College of engineering vadakara
 
 ### Project Description
 The Mouse Odometer is a serverless, hyper-engineered web dashboard that calculates the literal real-world distance and velocity of a user's physical mouse movements[cite: 13]. It permanently records lifetime telemetry—such as scroll wheel tread wear, peak flick speeds, and absurd distance equivalencies to the Burj Khalifa—directly into the browser's local storage.
