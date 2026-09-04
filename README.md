@@ -42,8 +42,7 @@ No installation or backend required. The project is completely serverless.
 For Software:
 
 # Screenshots (Add at least 3)
-![Dashboard Overview](of engineering vadakara<img width="960" height="600" alt="Screenshot 2026-08-03 123855" src="https://github.com/user-attachments/assets/98f88482-4b84-4901-bafc-f5ef3c91d12c" />
-<img width="960" height="600" alt="Screenshot 2026-08-03 123855" src="https://github.com/user-attachments/assets/5b6c24d1-4542-4834-8548-4de8d7a1ac25" />
+![Dashboard Overview](<img width="1280" height="640" alt="git (1)" src="https://github.com/user-attachments/assets/8920b256-2ba8-4988-b824-5351134eb4bd" />
 )
 *The main telemetry dashboard showing the master odometer and real-time velocity gauge.*
 
