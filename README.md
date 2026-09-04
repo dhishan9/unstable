@@ -10,10 +10,10 @@
 - Member 2: Neeraj P - College of engineering vadakara
 
 ### Project Description
-The Mouse Odometer is a serverless, hyper-engineered web dashboard that calculates the literal real-world distance and velocity of a user's physical mouse movements[cite: 13]. It permanently records lifetime telemetry—such as scroll wheel tread wear, peak flick speeds, and absurd distance equivalencies to the Burj Khalifa—directly into the browser's local storage.
+The Mouse Odometer is a serverless, hyper-engineered web dashboard that calculates the literal real-world distance and velocity of a user's physical mouse movements. It permanently records lifetime telemetry—such as scroll wheel tread wear, peak flick speeds, and absurd distance equivalencies to the Burj Khalifa—directly into the browser's local storage.
 
 ### The Problem (that doesn't exist)
-Computer users have absolutely no idea how many literal kilometers they scroll and drag their mouse during a standard day of coding or gaming[cite: 13].
+Computer users have absolutely no idea how many literal kilometers they scroll and drag their mouse during a standard day of coding or gaming.
 
 ### The Solution (that nobody asked for)
 A ridiculously over-engineered NASA-style cyber-dashboard that uses native browser event listeners to track physical cursor locomotion. It calculates real-time Euclidean distance, scroll wheel tread wear, and peak flick velocity without requiring any backend architecture, permanently storing your absurd lifetime stats in the browser cache.
@@ -41,15 +41,16 @@ No installation or backend required. The project is completely serverless.
 ### Project Documentation
 For Software:
 
-# Screenshots (Add at least 3)
-![Dashboard Overview]<img width="1911" height="1626" alt="dashboard" src="https://github.com/user-attachments/assets/5dd5847f-ccc0-44bc-b3b1-f76c3e29cccc" />
+# Screenshots 
+Dashboard Overview<img width="1911" height="1626" alt="dashboard" src="https://github.com/user-attachments/assets/5dd5847f-ccc0-44bc-b3b1-f76c3e29cccc" />
 
 *The main telemetry dashboard showing the master odometer and real-time velocity gauge.*
 
-![Scroll Wheel Telemetry](Add screenshot 2 here with proper name)
+Scroll Wheel Telemetry<img width="591" height="622" alt="Opera Snapshot_2026-09-04_072706_dhishan9 github io" src="https://github.com/user-attachments/assets/0753353b-9eaf-4f34-9ebe-3515f8a33bfb" />
 *Tracking the physical rotational distance of the scroll wheel and virtual tread wear.*
 
-![Activity Heatmap](Add screenshot 3 here with proper name)
+Activity Heatmap<img width="590" height="812" alt="Opera Snapshot_2026-09-04_072357_dhishan9 github io" src="https://github.com/user-attachments/assets/2ffeda1f-2d0b-423d-8278-08d2ebfefb75" />
+
 *The predictive velocity-dependent dwell simulation rendering cursor hotspots.*
 
 # Diagrams
