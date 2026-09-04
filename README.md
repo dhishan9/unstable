@@ -35,9 +35,8 @@ For Software:
 No installation or backend required. The project is completely serverless.
 
 # Run
-1. Double-click `index.html` to open it in any modern web browser.
-2. (Optional) Host the file permanently on GitHub Pages for live access.
-
+ Double-click `index.html` to open it in any modern web browser.
+ 
 ### Project Documentation
 For Software:
 
