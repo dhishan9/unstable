@@ -65,8 +65,8 @@ For Hardware:
 *Demonstration of the UI reacting in real-time to physical mouse flicks and scroll wheel rotations.*
 
 ## Team Contributions
-- [Dhishan Manoj]: [client side script]
-- [Neeraj P]: [front end]
+- Dhishan Manoj: Client side script
+- Neeraj P: Front end
 
 ---
 Made with ❤️ at TinkerHub Useless Projects 
