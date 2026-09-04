@@ -6,7 +6,6 @@
 ### Team Name: [Unstable]
 
 ### Team Members
-- Team Lead: Dhishan Manoj - APJ Abdul Kalam Technological Universit
 - Member 1: [Dhishan Manoj] - [College of engineering vadakara]
 - Member 2: [Neeraj P] - [College of engineering vadakara]
 
