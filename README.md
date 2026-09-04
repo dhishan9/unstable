@@ -54,8 +54,8 @@ Activity Heatmap<img width="590" height="812" alt="Opera Snapshot_2026-09-04_072
 *The predictive velocity-dependent dwell simulation rendering cursor hotspots.*
 
 # Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Client-Side Architecture: Hardware Interrupts -> Browser Event Listeners -> JS Math Engine -> DOM Repaint & LocalStorage.*
+Workflow
+Client-Side Architecture: Hardware Interrupts -> Browser Event Listeners -> JS Math Engine -> DOM Repaint & LocalStorage.
 
 For Hardware:
 *N/A - Project is fully software-based.*
