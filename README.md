@@ -2,11 +2,11 @@
 
 
 
-# [Project Name] 🎯
+# [Mouse Odometer] 🎯
 
 
 ## Basic Details
-### Team Name: [Name]
+### Team Name: [Unstable]
 
 
 ### Team Members
