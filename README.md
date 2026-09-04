@@ -59,11 +59,6 @@ Client-Side Architecture: Hardware Interrupts -> Browser Event Listeners -> JS M
 For Hardware:
 *N/A - Project is fully software-based.*
 
-### Project Demo
-# Video
-[Add your demo video link here]
-*Demonstration of the UI reacting in real-time to physical mouse flicks and scroll wheel rotations.*
-
 ## Team Contributions
 - Dhishan Manoj: Client side script
 - Neeraj P: Front end
